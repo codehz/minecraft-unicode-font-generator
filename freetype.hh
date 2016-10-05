@@ -92,8 +92,9 @@ private:
 	unsigned   pixel;
 	int        baseline;
 	colorConverter_t colorConverter;
+	const int  render_mode;
 public:
-	FreeType(bitmap_t *bitmap, std::string fontname, int face_index, unsigned pixel, unsigned fontsize) : bitmap(bitmap), pixel(pixel) {
+	FreeType(bitmap_t *bitmap, std::string fontname, int face_index, unsigned pixel, unsigned fontsize, bool light_mode) : bitmap(bitmap), pixel(pixel), render_mode(light_mode ? FT_LOAD_TARGET_NORMAL : FT_LOAD_TARGET_LIGHT) {
 		CatchFTError(FT_Init_FreeType(&library));
 		CatchFTError(FT_New_Face(library, fontname.c_str(), face_index, &face), create_map<int, std::string>(FT_Err_Unknown_File_Format, "Unknown File Format"));
 		CatchFTError(FT_Set_Pixel_Sizes(face, 0, fontsize));
@@ -112,7 +113,7 @@ public:
 
 	void genChar(unsigned long c) {
 		auto index = FT_Get_Char_Index(face, c);
-		CatchFTError(FT_Load_Glyph(face, index, FT_LOAD_RENDER));
+		CatchFTError(FT_Load_Glyph(face, index, FT_LOAD_RENDER | render_mode));
 	}
 
 	void drawTo(unsigned x, unsigned y, unsigned char *glyph_info, bool hw = false) {

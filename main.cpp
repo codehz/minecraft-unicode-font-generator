@@ -23,10 +23,10 @@ void clearImage(T &image, unsigned N) {
 			image[i][j] = converter((unsigned char)0);
 }
 
-int proc(std::string fontname, std::string target, unsigned char *glyph, unsigned base_size, unsigned font_size, int thread = 0) {
+int proc(std::string fontname, std::string target, unsigned char *glyph, unsigned base_size, unsigned font_size, int thread, bool light_mode) {
 	png::image<png::ga_pixel> image(base_size * 16, base_size * 16);
 	char id[3] = {0};
-	FreeType<decltype(image), grayColorConverter> ft(&image, fontname, 0, base_size, font_size);
+	FreeType<decltype(image), grayColorConverter> ft(&image, fontname, 0, base_size, font_size, light_mode);
 	
 	int thrd = thread;
 	int splice = 0xFF / (thread + 1);
@@ -59,6 +59,7 @@ int main(int argc, char** argv) try {
 	TCLAP::ValueArg<unsigned> font_size{"f", "font_size", "Font size", false, 14, "font size"};
 	TCLAP::ValueArg<unsigned> base_size{"s", "base_size", "Unit size (must be large than Font Size)", false, 16, "unit size"};
 	TCLAP::ValueArg<unsigned> thread{"t", "thread", "Thread(0 will disable this feature)", false, 0, "thread number"};
+	TCLAP::SwitchArg light_mode{"l", "light", "Render Text in light mode", false};
 
 	cmd.add(fontname);
 	cmd.add(output);
@@ -66,6 +67,7 @@ int main(int argc, char** argv) try {
 	cmd.add(font_size);
 	cmd.add(base_size);
 	cmd.add(thread);
+	cmd.add(light_mode);
 
 	cmd.parse(argc, argv);
 
@@ -88,7 +90,7 @@ int main(int argc, char** argv) try {
 		throw e;
 	}
 
-	if (proc(fontname.getValue(), output.getValue(), map, base_size.getValue(), font_size.getValue(), thread.getValue())) {
+	if (proc(fontname.getValue(), output.getValue(), map, base_size.getValue(), font_size.getValue(), thread.getValue(), light_mode.getValue())) {
 		while (true) {
 			int status;
 			pid_t done = wait(&status);
