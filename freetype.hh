@@ -6,6 +6,7 @@
 #include <map>
 #include <exception>
 #include <iostream>
+#include <iomanip>
 #include <cmath>
 
 #include "create_map.hh"
@@ -99,12 +100,12 @@ public:
 		std::cout << "Font " << face->family_name << "(" << face->style_name << ") Loaded. base line:" << (baseline = abs(face->descender) * fontsize / face->units_per_EM) << std::endl;
 	}
 
-	bitmap_t *genStart(unsigned long from) {
+	bitmap_t *genStart(unsigned long from, unsigned char *glyph_info) {
 		for (unsigned i = 0; i < 16; i++)
 			for (unsigned j = 0; j < 16; j++) {
 				auto ch = from * 256 + i * 16 + j;
 				genChar(ch);
-				drawTo(i, j, fwrange.find(make_single_range(ch)) != fwrange.end());
+				drawTo(i, j, glyph_info + ch, fwrange.find(make_single_range(ch)) != fwrange.end());
 			}
 		return bitmap;
 	}
@@ -114,18 +115,19 @@ public:
 		CatchFTError(FT_Load_Glyph(face, index, FT_LOAD_RENDER));
 	}
 
-	void drawTo(unsigned x, unsigned y, bool hw = false) {
+	void drawTo(unsigned x, unsigned y, unsigned char *glyph_info, bool hw = false) {
 		auto buffer = face->glyph->bitmap.buffer;
 		if (buffer == nullptr) return;
 		auto cols = std::min(face->glyph->bitmap.width, pixel);
 		auto rows = std::min(face->glyph->bitmap.rows, pixel);
 		auto xoffset = std::max<int>(pixel - (baseline + face->glyph->metrics.horiBearingY / 64), 0);
 		auto yoffset = std::max<int>(face->glyph->bitmap_left, 0);
-		if (!hw) yoffset = yoffset;
+		//if (!hw) yoffset = yoffset;
 		xoffset -= std::max<int>(xoffset + rows - pixel, 0);
 		yoffset -= std::max<int>(yoffset + cols - pixel, 0);
+		*glyph_info = hw ? 0x0f : ((unsigned char)std::min<int>(std::floor((float)yoffset * 0xF / pixel), 0xF) * 16 + (unsigned char)std::min<int>(std::ceil(((float)yoffset + cols) * 0xF / pixel), 0xF));
 #ifdef DEBUG
-		std::cerr << x << "," << y << ":[" << cols << "," << rows << "]" << "<" << xoffset << "," << yoffset << ">" <<  face->bbox.yMax << std::endl;
+		std::cerr << x << "," << y << ":[" << cols << "," << rows << "]" << "<" << xoffset << "," << yoffset << ">" << "(" << (float)yoffset * 0xF / pixel << "," << ((float)yoffset + cols) * 0xF / pixel << ")" << std::setw(2) << std::setfill('0') << std::hex <<  (int)*glyph_info << std::dec << std::endl;
 #endif
 	 	for (unsigned i = 0; i < rows; i++)
 			for (unsigned j = 0; j < cols; j++)
