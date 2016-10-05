@@ -52,7 +52,7 @@ int proc(std::string fontname, std::string target, unsigned char *glyph, unsigne
 }
 
 int main(int argc, char** argv) try {
-	TCLAP::CmdLine cmd("Minecraft Unicode Font Generator", ' ', "0.1");
+	TCLAP::CmdLine cmd("Minecraft Unicode Font Generator", ' ', "0.2");
 	TCLAP::ValueArg<std::string> fontname{"i", "input", "Input font", false, "font.ttf", "font path"};
 	TCLAP::ValueArg<std::string> output{"o", "output", "Output directory", false, "out", "directory path"};
 	TCLAP::ValueArg<std::string> glyph{"g", "graph", "Output glyph File", false, "glyph_sizes.bin", "file path"};
