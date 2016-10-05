@@ -76,7 +76,7 @@ public:
 
 struct SimpleColorConverter {
 	unsigned operator () (unsigned char in) {
-		return 0xFF000000 + (unsigned)in << 16 + (unsigned)in << 8 + in;
+		return 0xFF000000 + ((unsigned)in << 16) + ((unsigned)in << 8) + in;
 	}
 };
 
