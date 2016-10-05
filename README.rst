@@ -75,3 +75,6 @@ After Makefile is generated, run ``make`` to compile the program::
 
     $ make
 
+The default build target is ``./bin/Debug/minecraft-unicode-font-generator``.You can just run following command to get release build::
+
+    $ make config=release
