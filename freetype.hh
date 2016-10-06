@@ -142,7 +142,7 @@ public:
 			unsigned char *row;
 			for (unsigned i = 0; i < rows; i++) {
 				for (unsigned j = 0; j < cols; j++)
-					(*bitmap)[x * pixel + i + xoffset][y * pixel + j + yoffset] = (!!(buffer[i * face->glyph->bitmap.pitch + (j >> 3)] & (128 >> (j & 7)))) * 0xFF;
+					(*bitmap)[x * pixel + i + xoffset][y * pixel + j + yoffset] = colorConverter((!!(buffer[i * face->glyph->bitmap.pitch + (j >> 3)] & (128 >> (j & 7)))) * 0xFF);
 			}
 		}
 		else if (face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_GRAY)
