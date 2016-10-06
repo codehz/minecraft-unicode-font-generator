@@ -23,7 +23,7 @@ void clearImage(T &image, unsigned N) {
 			image[i][j] = converter((unsigned char)0);
 }
 
-int proc(std::string fontname, std::string target, unsigned char *glyph, unsigned base_size, unsigned font_size, int thread, bool light_mode) {
+int proc(std::string fontname, std::string target, unsigned char *glyph, unsigned base_size, unsigned font_size, int thread, bool light_mode, bool pe_mode) {
 	png::image<png::ga_pixel> image(base_size * 16, base_size * 16);
 	char id[3] = {0};
 	FreeType<decltype(image), grayColorConverter> ft(&image, fontname, 0, base_size, font_size, light_mode);
@@ -43,9 +43,9 @@ int proc(std::string fontname, std::string target, unsigned char *glyph, unsigne
 	for (int i = start; i <= end; i++) {
 		clearImage(image, base_size * 16);
 		ft.genStart(i, glyph);
-		sprintf(id, "%02x", i);
+		sprintf(id, pe_mode ? "%02X" : "%02x", i);
 		printf("\033[0;31m[%d]\033[0mgenerated \033[0;35m%s\033[0;33m(%6.2f%%)\033[0m\n", tid, id, (((float)(i - start) / (end - start)) * 100));
-		image.write(target + "/unicode_page_" + id + ".png");
+		image.write(target + (pe_mode ? "/glyph_" : "/unicode_page_") + id + ".png");
 	}
 	printf("\033[0;32m[%d]\033[0mfinsish!\n", tid);
 	return !tid;
@@ -60,6 +60,7 @@ int main(int argc, char** argv) try {
 	TCLAP::ValueArg<unsigned> base_size{"s", "base_size", "Unit size (must be large than Font Size)", false, 16, "unit size"};
 	TCLAP::ValueArg<unsigned> thread{"t", "thread", "Thread(0 will disable this feature)", false, 0, "thread number"};
 	TCLAP::SwitchArg light_mode{"l", "light", "Render Text in light mode", false};
+	TCLAP::SwitchArg pe_mode("p", "pe", "Pocket Edition Mode", false);
 
 	cmd.add(fontname);
 	cmd.add(output);
@@ -68,6 +69,7 @@ int main(int argc, char** argv) try {
 	cmd.add(base_size);
 	cmd.add(thread);
 	cmd.add(light_mode);
+	cmd.add(pe_mode);
 
 	cmd.parse(argc, argv);
 
@@ -90,7 +92,7 @@ int main(int argc, char** argv) try {
 		throw e;
 	}
 
-	if (proc(fontname.getValue(), output.getValue(), map, base_size.getValue(), font_size.getValue(), thread.getValue(), light_mode.getValue())) {
+	if (proc(fontname.getValue(), output.getValue(), map, base_size.getValue(), font_size.getValue(), thread.getValue(), light_mode.getValue(), pe_mode.getValue())) {
 		while (true) {
 			int status;
 			pid_t done = wait(&status);
