@@ -23,11 +23,11 @@ void clearImage(T &image, unsigned N) {
 			image[i][j] = converter((unsigned char)0);
 }
 
-int proc(std::string fontname, std::string target, unsigned char *glyph, unsigned base_size, unsigned font_size, int thread, int light_mode, bool pe_mode) {
+int proc(std::string fontname, unsigned fontindex, std::string target, unsigned char *glyph, unsigned base_size, unsigned font_size, int thread, int light_mode, bool pe_mode) {
 	png::image<png::ga_pixel> image(base_size * 16, base_size * 16);
 	char id[3] = {0};
 	if (checkFTParams(light_mode)) throw std::runtime_error("Incorrect light_mode");
-	FreeType<decltype(image), grayColorConverter> ft(&image, fontname, 0, base_size, font_size, light_mode);
+	FreeType<decltype(image), grayColorConverter> ft(&image, fontname, fontindex, base_size, font_size, light_mode);
 	
 	int thrd = thread;
 	int splice = 0xFF / (thread + 1);
@@ -58,6 +58,7 @@ int main(int argc, char** argv) try {
 	TCLAP::ValueArg<std::string> output{"o", "output", "Output directory", false, "out", "directory path"};
 	TCLAP::ValueArg<std::string> glyph{"g", "graph", "Output glyph File", false, "glyph_sizes.bin", "file path"};
 	TCLAP::ValueArg<unsigned> font_size{"f", "font_size", "Font size", false, 14, "font size"};
+	TCLAP::ValueArg<unsigned> font_index{"", "font_index", "Font index", false, 0, "font index"};
 	TCLAP::ValueArg<unsigned> base_size{"s", "base_size", "Unit size (must be large than Font Size)", false, 16, "unit size"};
 	TCLAP::ValueArg<unsigned> thread{"t", "thread", "Thread(0 will disable this feature)", false, 0, "thread number"};
 	TCLAP::MultiSwitchArg light_mode{"l", "light", "Render Text in light mode(double -l will enable mono mode)", 0};
@@ -67,6 +68,7 @@ int main(int argc, char** argv) try {
 	cmd.add(output);
 	cmd.add(glyph);
 	cmd.add(font_size);
+	cmd.add(font_index);
 	cmd.add(base_size);
 	cmd.add(thread);
 	cmd.add(light_mode);
@@ -93,7 +95,7 @@ int main(int argc, char** argv) try {
 		throw e;
 	}
 
-	if (proc(fontname.getValue(), output.getValue(), map, base_size.getValue(), font_size.getValue(), thread.getValue(), light_mode.getValue(), pe_mode.getValue())) {
+	if (proc(fontname.getValue(), font_index.getValue(), output.getValue(), map, base_size.getValue(), font_size.getValue(), thread.getValue(), light_mode.getValue(), pe_mode.getValue())) {
 		while (true) {
 			int status;
 			pid_t done = wait(&status);
