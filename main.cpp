@@ -23,9 +23,10 @@ void clearImage(T &image, unsigned N) {
 			image[i][j] = converter((unsigned char)0);
 }
 
-int proc(std::string fontname, std::string target, unsigned char *glyph, unsigned base_size, unsigned font_size, int thread, bool light_mode, bool pe_mode) {
+int proc(std::string fontname, std::string target, unsigned char *glyph, unsigned base_size, unsigned font_size, int thread, int light_mode, bool pe_mode) {
 	png::image<png::ga_pixel> image(base_size * 16, base_size * 16);
 	char id[3] = {0};
+	if (checkFTParams(light_mode)) throw std::runtime_error("Incorrect light_mode");
 	FreeType<decltype(image), grayColorConverter> ft(&image, fontname, 0, base_size, font_size, light_mode);
 	
 	int thrd = thread;
@@ -52,14 +53,14 @@ int proc(std::string fontname, std::string target, unsigned char *glyph, unsigne
 }
 
 int main(int argc, char** argv) try {
-	TCLAP::CmdLine cmd("Minecraft Unicode Font Generator", ' ', "0.2");
+	TCLAP::CmdLine cmd("Minecraft Unicode Font Generator", ' ', "0.3");
 	TCLAP::ValueArg<std::string> fontname{"i", "input", "Input font", false, "font.ttf", "font path"};
 	TCLAP::ValueArg<std::string> output{"o", "output", "Output directory", false, "out", "directory path"};
 	TCLAP::ValueArg<std::string> glyph{"g", "graph", "Output glyph File", false, "glyph_sizes.bin", "file path"};
 	TCLAP::ValueArg<unsigned> font_size{"f", "font_size", "Font size", false, 14, "font size"};
 	TCLAP::ValueArg<unsigned> base_size{"s", "base_size", "Unit size (must be large than Font Size)", false, 16, "unit size"};
 	TCLAP::ValueArg<unsigned> thread{"t", "thread", "Thread(0 will disable this feature)", false, 0, "thread number"};
-	TCLAP::SwitchArg light_mode{"l", "light", "Render Text in light mode", false};
+	TCLAP::MultiSwitchArg light_mode{"l", "light", "Render Text in light mode(double -l will enable mono mode)", 0};
 	TCLAP::SwitchArg pe_mode("p", "pe", "Pocket Edition Mode", false);
 
 	cmd.add(fontname);
