@@ -116,17 +116,16 @@ public:
 		CatchFTError(FT_Load_Glyph(face, index, FT_LOAD_RENDER | render_mode));
 	}
 
-	void drawTo(unsigned x, unsigned y, unsigned char *glyph_info, bool hw = false) {
+	void drawTo(unsigned x, unsigned y, unsigned char *glyph_info, bool fw = false) {
 		auto buffer = face->glyph->bitmap.buffer;
 		if (buffer == nullptr) return;
 		auto cols = std::min(face->glyph->bitmap.width, pixel);
 		auto rows = std::min(face->glyph->bitmap.rows, pixel);
 		auto xoffset = std::max<int>(pixel - (baseline + face->glyph->metrics.horiBearingY / 64), 0);
 		auto yoffset = std::max<int>(face->glyph->bitmap_left, 0);
-		//if (!hw) yoffset = yoffset;
 		xoffset -= std::max<int>(xoffset + rows - pixel, 0);
 		yoffset -= std::max<int>(yoffset + cols - pixel, 0);
-		*glyph_info = hw ? 0x0f : ((unsigned char)std::min<int>(std::floor((float)yoffset * 0xF / pixel), 0xF) * 16 + (unsigned char)std::min<int>(std::ceil(((float)yoffset + cols) * 0xF / pixel), 0xF));
+		*glyph_info = fw ? 0x0f : ((unsigned char)std::min<int>(std::floor((float)yoffset * 0xF / pixel), 0xF) * 16 + (unsigned char)std::min<int>(std::ceil(((float)yoffset + cols) * 0xF / pixel), 0xF));
 #ifdef DEBUG
 		std::cerr << x << "," << y << ":[" << cols << "," << rows << "]" << "<" << xoffset << "," << yoffset << ">" << "(" << (float)yoffset * 0xF / pixel << "," << ((float)yoffset + cols) * 0xF / pixel << ")" << std::setw(2) << std::setfill('0') << std::hex <<  (int)*glyph_info << std::dec << std::endl;
 #endif
