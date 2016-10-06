@@ -19,14 +19,14 @@ extern "C"
 #include FT_BITMAP_H
 }
 
-class FTError : public std::runtime_error {
+class FTError {
 	char buffer[64];
 public:
-	FTError(int err) : std::runtime_error(buffer) {
+	FTError(int err) {
 		sprintf(buffer, "FreeTypeError: %d", err);
 	}
 
-	FTError(int err, std::map<int, std::string> errmap) : std::runtime_error(buffer) {
+	FTError(int err, std::map<int, std::string> errmap) {
 		auto it = errmap.find(err);
 		if (it != errmap.end()) sprintf(buffer, "FreeTypeError: %d(%s)", err, it->second.c_str());
 		else sprintf(buffer, "FreeTypeError: %d", err);

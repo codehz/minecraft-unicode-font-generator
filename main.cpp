@@ -35,8 +35,11 @@ int proc(std::string fontname, unsigned fontindex, std::string target, unsigned 
 
 	while (thrd-- > 0) if (fork() == 0) {
 		tid = thread - thrd;
+		printf("\033[0;32m[%d]\033[0mstarting\n", tid);
 		break;
 	}
+
+	if (!tid) printf("\033[0;32m[0]\033[0mstarting\n");
 
 	int start = tid * splice;
 	int end = ((tid == thread) ? 0xFF : ((tid + 1) * splice - 1));
@@ -45,8 +48,8 @@ int proc(std::string fontname, unsigned fontindex, std::string target, unsigned 
 		clearImage(image, base_size * 16);
 		ft.genStart(i, glyph);
 		sprintf(id, pe_mode ? "%02X" : "%02x", i);
-		printf("\033[0;31m[%d]\033[0mgenerated \033[0;35m%s\033[0;33m(%6.2f%%)\033[0m\n", tid, id, (((float)(i - start) / (end - start)) * 100));
 		image.write(target + (pe_mode ? "/glyph_" : "/unicode_page_") + id + ".png");
+		printf("\033[0;31m[%d]\033[0mgenerated \033[0;35m%s\033[0;33m(%6.2f%%)\033[0m\n", tid, id, (((float)(i - start) / (end - start)) * 100));
 	}
 	printf("\033[0;32m[%d]\033[0mfinsish!\n", tid);
 	return !tid;
@@ -95,6 +98,8 @@ int main(int argc, char** argv) try {
 		throw e;
 	}
 
+	std::cout << "\033[0;32mSTARTING\033[0m" << std::endl;
+
 	if (proc(fontname.getValue(), font_index.getValue(), output.getValue(), map, base_size.getValue(), font_size.getValue(), thread.getValue(), light_mode.getValue(), pe_mode.getValue())) {
 		while (true) {
 			int status;
@@ -106,6 +111,7 @@ int main(int argc, char** argv) try {
 					throw std::runtime_error("sub process failed");
 			}
 		}
+		printf("\033[0;32mALL DONE!\033[0m\n");
 		close(fd);
 	}
 
@@ -113,8 +119,14 @@ int main(int argc, char** argv) try {
 } catch (TCLAP::ArgException &e) {
 	std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 	exit(EXIT_FAILURE);
+} catch (FTError &e) {
+	std::cerr << e.what() << std::endl;
+	exit(EXIT_FAILURE);
 } catch (std::exception &e) {
 	std::cerr << "error: " << e.what() << std::endl;
+	exit(EXIT_FAILURE);
+} catch (...) {
+	std::cerr << "unknown error" << std::endl;
 	exit(EXIT_FAILURE);
 }
 
