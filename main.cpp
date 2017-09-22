@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <cstdio>
+#include <type_traits>
+#include <tuple>
 
 struct grayColorConverter {
 	png::ga_pixel operator () (unsigned char color) {
@@ -23,11 +25,24 @@ void clearImage(T &image, unsigned N) {
 			image[i][j] = converter((unsigned char)0);
 }
 
-int proc(std::string fontname, unsigned fontindex, std::string target, unsigned char *glyph, unsigned base_size, unsigned font_size, int thread, int light_mode, bool pe_mode) {
-	png::image<png::ga_pixel> image(base_size * 16, base_size * 16);
+struct FontPack {
+    png::image<png::ga_pixel> image;
+    FreeType<png::image<png::ga_pixel>, grayColorConverter> ft;
+    unsigned base_size;
+
+    FontPack(std::string fontname, unsigned fontindex, unsigned base_size, unsigned font_size, int light_mode) : image(base_size * 16, base_size * 16) ,ft(&image, fontname, fontindex, base_size, font_size, light_mode), base_size(base_size) {
+    }
+};
+
+void generate(const FontPack &pack, int i, unsigned char *glyph, const std::string &filename) {
+    auto [image, ft, base_size] = pack;
+    clearImage(image, base_size * 16);
+    ft.genStart(i, glyph);
+    image.write(filename);
+}
+
+int proc(const FontPack &pack, std::string target, unsigned char *glyph, int thread, bool pe_mode) {
 	char id[3] = {0};
-	if (checkFTParams(light_mode)) throw std::runtime_error("Incorrect light_mode");
-	FreeType<decltype(image), grayColorConverter> ft(&image, fontname, fontindex, base_size, font_size, light_mode);
 	
 	int thrd = thread;
 	int splice = 0xFF / (thread + 1);
@@ -43,12 +58,12 @@ int proc(std::string fontname, unsigned fontindex, std::string target, unsigned 
 
 	int start = tid * splice;
 	int end = ((tid == thread) ? 0xFF : ((tid + 1) * splice - 1));
+
+	std::string filename_prefix = target + (pe_mode ? "/glyph_" : "/unicode_page_");
 	
 	for (int i = start; i <= end; i++) {
-		clearImage(image, base_size * 16);
-		ft.genStart(i, glyph);
 		sprintf(id, pe_mode ? "%02X" : "%02x", i);
-		image.write(target + (pe_mode ? "/glyph_" : "/unicode_page_") + id + ".png");
+	    generate(pack, i, glyph, filename_prefix + id + ".png");
 		printf("\033[0;31m[%d]\033[0mgenerated \033[0;35m%s\033[0;33m(%6.2f%%)\033[0m\n", tid, id, (((float)(i - start) / (end - start)) * 100));
 	}
 	printf("\033[0;32m[%d]\033[0mfinsish!\n", tid);
@@ -66,6 +81,7 @@ int main(int argc, char** argv) try {
 	TCLAP::ValueArg<unsigned> thread{"t", "thread", "Thread(0 will disable this feature)", false, 0, "thread number"};
 	TCLAP::MultiSwitchArg light_mode{"l", "light", "Render Text in light mode(double -l will enable mono mode)", 0};
 	TCLAP::SwitchArg pe_mode("p", "pe", "Pocket Edition Mode", false);
+	TCLAP::ValueArg<int> preview{"v", "preview", "Generate a preview page(from specific code point)", false, -1, "code point"};
 
 	cmd.add(fontname);
 	cmd.add(output);
@@ -76,6 +92,7 @@ int main(int argc, char** argv) try {
 	cmd.add(thread);
 	cmd.add(light_mode);
 	cmd.add(pe_mode);
+	cmd.add(preview);
 
 	cmd.parse(argc, argv);
 
@@ -83,16 +100,27 @@ int main(int argc, char** argv) try {
 
 	struct stat st = {0};
 	if (stat(fontname.getValue().c_str(), &st) == -1) throw std::runtime_error("font not exist!");
-	if (stat(output.getValue().c_str(), &st) == -1) mkdir(output.getValue().c_str(), 0700);
 
 	int fd = open(glyph.getValue().c_str(), O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
 	if (fd == -1) throw std::runtime_error("Error opening file for writing");
+
+	FontPack fontPack{fontname.getValue(), font_index.getValue(), base_size.getValue(), font_size.getValue(), light_mode.getValue()};
+
+	if (preview.getValue() > -1) {
+	    std::cout << "\033[0;32mGenerating Preview...\033[0m" << std::endl;
+	    generate(fontPack, preview.getValue(), nullptr, output.getValue() + "_preview.png");
+	    std::cout << "\033[0;32mPreview Image Generated.\033[0m" << std::endl;
+	    //_exit(0);
+	    return 0;
+	}
+
+	if (stat(output.getValue().c_str(), &st) == -1) mkdir(output.getValue().c_str(), 0700);
+
 	unsigned char *map{0};
 	try {
 		if (lseek(fd, 0xFFFF - 1, SEEK_SET) == -1) throw std::runtime_error("Error calling lseek() to 'stretch' the file");
 		if (write(fd, "", 1) != 1) throw std::runtime_error("Error writing last byte of the file");
 		if ((map = (unsigned char *)mmap(0, 0xFFFF, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0)) == MAP_FAILED) throw std::runtime_error("Error mmapping the file");
-		
 	} catch (const std::exception &e) {
 		close(fd);
 		throw e;
@@ -100,7 +128,7 @@ int main(int argc, char** argv) try {
 
 	std::cout << "\033[0;32mSTARTING\033[0m" << std::endl;
 
-	if (proc(fontname.getValue(), font_index.getValue(), output.getValue(), map, base_size.getValue(), font_size.getValue(), thread.getValue(), light_mode.getValue(), pe_mode.getValue())) {
+	if (proc(fontPack, output.getValue(), map, thread.getValue(), pe_mode.getValue())) {
 		while (true) {
 			int status;
 			pid_t done = wait(&status);
@@ -115,12 +143,13 @@ int main(int argc, char** argv) try {
 		close(fd);
 	}
 
+	//_exit(0);
 	return 0;
 } catch (TCLAP::ArgException &e) {
 	std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
 	exit(EXIT_FAILURE);
 } catch (FTError &e) {
-	std::cerr << e.what() << std::endl;
+	std::cerr << "FTError: " << e.what() << std::endl;
 	exit(EXIT_FAILURE);
 } catch (std::exception &e) {
 	std::cerr << "error: " << e.what() << std::endl;

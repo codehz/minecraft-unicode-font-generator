@@ -6,7 +6,8 @@ project "minecraft-unicode-font-generator"
 	language "C++"
 	targetdir "bin/%{cfg.buildcfg}"
 	includedirs { "/usr/local/include/freetype2/", "/usr/local/include/tclap/" }
-	buildoptions "-std=c++14"
+	buildoptions "-std=c++1z"
+	defines { "PNG_SKIP_SETJMP_CHECK" }
 
 	links { "png",  "freetype" }
 
