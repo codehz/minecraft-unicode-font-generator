@@ -77,7 +77,7 @@ public:
 };
 
 struct SimpleColorConverter {
-	unsigned operator () (unsigned char in) {
+	unsigned operator () (unsigned char in) const {
 		return 0xFF000000 + ((unsigned)in << 16) + ((unsigned)in << 8) + in;
 	}
 };
@@ -111,7 +111,7 @@ public:
 		FT_Bitmap_Done(library, cvt_bitmap);
 	}
 
-	bitmap_t *genStart(unsigned long from, unsigned char *glyph_info) {
+	bitmap_t *genStart(unsigned long from, unsigned char *glyph_info) const {
 		for (unsigned i = 0; i < 16; i++)
 			for (unsigned j = 0; j < 16; j++) {
 				auto ch = from * 256 + i * 16 + j;
@@ -121,12 +121,12 @@ public:
 		return bitmap;
 	}
 
-	void genChar(unsigned long c) {
+	void genChar(unsigned long c) const {
 		auto index = FT_Get_Char_Index(face, c);
 		CatchFTError(FT_Load_Glyph(face, index, FT_LOAD_RENDER | render_mode));
 	}
 
-	void drawTo(unsigned x, unsigned y, unsigned char *glyph_info, bool fw = false) {
+	void drawTo(unsigned x, unsigned y, unsigned char *glyph_info, bool fw = false) const {
 		auto buffer = face->glyph->bitmap.buffer;
 		if (buffer == nullptr) return;
 		auto cols = std::min<int>(face->glyph->bitmap.width, pixel);

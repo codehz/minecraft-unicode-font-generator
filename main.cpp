@@ -12,7 +12,7 @@
 #include <tuple>
 
 struct grayColorConverter {
-	png::ga_pixel operator () (unsigned char color) {
+	png::ga_pixel operator () (const unsigned char &color) const {
 		return png::ga_pixel(0xFF, color);
 	}
 };
@@ -34,14 +34,14 @@ struct FontPack {
     }
 };
 
-void generate(const FontPack &pack, int i, unsigned char *glyph, const std::string &filename) {
-    auto [image, ft, base_size] = pack;
+void generate(FontPack &pack, int i, unsigned char *glyph, const std::string &filename) {
+    auto&& [image, ft, base_size] = pack;
     clearImage(image, base_size * 16);
     ft.genStart(i, glyph);
     image.write(filename);
 }
 
-int proc(const FontPack &pack, std::string target, unsigned char *glyph, int thread, bool pe_mode) {
+int proc(FontPack &pack, std::string target, unsigned char *glyph, int thread, bool pe_mode) {
 	char id[3] = {0};
 	
 	int thrd = thread;
@@ -70,6 +70,20 @@ int proc(const FontPack &pack, std::string target, unsigned char *glyph, int thr
 	return !tid;
 }
 
+//Minecraft only support 0x0 ~ 0xFFFF
+unsigned getFirstChar(const std::string &utf8) {
+    unsigned unicode = 0;
+    char first = utf8.at(0);
+    unsigned len = (first >> 7) == 0 ? 1 : (first & 0xe0) == 0xe0 ? 3 : (first & 0xc0) == 0xc0 ? 2 : 0;
+    if (len == 0) throw std::runtime_error("Character is not in range(UCS2)");
+    unicode += (uint8_t)(first << len) >> len;
+    for(auto i = 1; i < len; ++i) {
+        unicode <<= 6;
+        unicode += ((uint8_t)utf8[i]) & 0x3F;
+    }
+    return unicode;
+}
+
 int main(int argc, char** argv) try {
 	TCLAP::CmdLine cmd("Minecraft Unicode Font Generator", ' ', "0.3");
 	TCLAP::ValueArg<std::string> fontname{"i", "input", "Input font", false, "font.ttf", "font path"};
@@ -81,7 +95,7 @@ int main(int argc, char** argv) try {
 	TCLAP::ValueArg<unsigned> thread{"t", "thread", "Thread(0 will disable this feature)", false, 0, "thread number"};
 	TCLAP::MultiSwitchArg light_mode{"l", "light", "Render Text in light mode(double -l will enable mono mode)", 0};
 	TCLAP::SwitchArg pe_mode("p", "pe", "Pocket Edition Mode", false);
-	TCLAP::ValueArg<int> preview{"v", "preview", "Generate a preview page(from specific code point)", false, -1, "code point"};
+	TCLAP::ValueArg<std::string> preview{"v", "preview", "Generate a preview page", false, "", "Character"};
 
 	cmd.add(fontname);
 	cmd.add(output);
@@ -106,11 +120,10 @@ int main(int argc, char** argv) try {
 
 	FontPack fontPack{fontname.getValue(), font_index.getValue(), base_size.getValue(), font_size.getValue(), light_mode.getValue()};
 
-	if (preview.getValue() > -1) {
+	if (!preview.getValue().empty()) {
 	    std::cout << "\033[0;32mGenerating Preview...\033[0m" << std::endl;
-	    generate(fontPack, preview.getValue(), nullptr, output.getValue() + "_preview.png");
+	    generate(fontPack, getFirstChar(preview.getValue()) >> 8, nullptr, output.getValue() + "_preview.png");
 	    std::cout << "\033[0;32mPreview Image Generated.\033[0m" << std::endl;
-	    //_exit(0);
 	    return 0;
 	}
 
@@ -143,7 +156,6 @@ int main(int argc, char** argv) try {
 		close(fd);
 	}
 
-	//_exit(0);
 	return 0;
 } catch (TCLAP::ArgException &e) {
 	std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
